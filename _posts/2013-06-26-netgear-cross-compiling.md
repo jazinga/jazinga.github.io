@@ -276,4 +276,34 @@ ip path is hardcoded in cow/ipcmd.py
 (A) There is still an issue where psutils does not build due to a python
     environment flag that -should- have been exported in some manner from my
     makefile cross-comiples thingy
+(X) I think I left off with an error importing _io.so
+    -- nope, works fine
+(A) There's an issue with iptables, it doens't work. Maybe I have to rebuild my
+    image to fix that...
+(A) I need my firewalls rules, and my multicast rules for provisioning to work:
+   
+    export ROOT=/opt/jazinga
+    export WINGU_ROOT=$ROOT/current
+    export GNUPGHOME=$ROOT/config/gnupg
+    export USER=nobody
+    export HOMEDIR=$ROOT/config
+    stay_up $ROOT/failsafe/sbin/openvpn \
+            --writepid $ROOT/var/run/openvpn.client.pid \
+            --status $ROOT/var/run/openvpn.client.status 10 \
+            --config $ROOT/config/openvpn/client.conf \
+            --script-security 2 \
+            &
+    su $USER -c "export GNUPGHOME=$GNUPGHOME; HOME=$HOMEDIR; $WINGU_ROOT/bin/mcp.py --root=$ROOT &" >/dev/null 2>&1
+    su $USER -c "export GNUPGHOME=$GNUPGHOME; HOME=$HOMEDIR; WINGU_ROOT=$WINGU_ROOT; PATH=$WINGU_ROOT/bin:$PATH; setsid $WINGU_ROOT/bin/run-consumers.sh &" >/dev/null 2>&1
+    su $USER -c "export GNUPGHOME=$GNUPGHOME; HOME=$HOMEDIR; WINGU_ROOT=$WINGU_ROOT; PATH=$WINGU_ROOT/bin:$PATH; setsid $WINGU_ROOT/bin/run-asterisk.sh &" >/dev/null 2>&1
+    iptables -t nat -A PREROUTING -i eth0 -p udp -d 224.0.1.75 -j REDIRECT --to-ports 5063
+    iptables -t nat -A PREROUTING -p udp --dport 67 -j REDIRECT --to-ports 1067
+    iptables -t nat -A PREROUTING -p udp --dport 69 -j REDIRECT --to-ports 1069
+    iptables -t nat -A PREROUTING -p udp --dport 53 -j REDIRECT --to-ports 1053
+    # If there is no other portal handling the redirect, also add:
+    iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-ports 8081
+    ip route add 224.0.0.0/4 dev eth0
 
+(A) Need to ensure my config points to br0 for our local interface in fetching ip addresses and such
+(A) chang provision in autorpov/settings.py to use :8080 instead of nothing
+(A) Enroll address seems to be reported as WAN interface IP instead of LAN interface IP 
